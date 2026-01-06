@@ -1,4 +1,4 @@
-Neural Lock - Human-State-Aware Policy Gate for Bitcoin Custody
+# Neural Lock - Human-State-Aware Policy Gate for Bitcoin Custody
 An Open Standard for Coercion-Resilient, Policy-Bound Bitcoin Operations
 
 Specification Version: v1.0.0
