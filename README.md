@@ -1,12 +1,13 @@
-# Neural Lock - Human-State-Aware Policy Gate for Bitcoin Custody
-An Open Standard for Coercion-Resilient, Policy-Bound Bitcoin Operations
+# Neural Lock — Human-State-Aware Policy Gate for Bitcoin Custody
 
-Specification Version: v1.0.0
-Status: SPECIFICATION. Domain Evaluation Requested.
-Author: rosiea
-Contact: [PQRosie@proton.me](mailto:PQRosie@proton.me)
-Date: January 2026
-Licence: Apache License 2.0 - Copyright 2026 rosiea
+**An Open Standard for Coercion-Resilient, Policy-Bound Bitcoin Operations**
+
+* **Specification Version:** 1.0.0
+* **Status:** Implementation Ready (Domain Evaluation Requested)
+* **Date:** 2026
+* **Author:** rosiea
+* **Contact:** PQRosie@proton.me
+* **Licence:** Apache License 2.0 — Copyright 2025 rosiea
 
 ---
 
@@ -20,22 +21,23 @@ Key Innovation: Neural Lock adds an operator state predicate as a fourth dimensi
 
 ## Index
 
-1. [Introduction](https://github.com/rosieRRRRR/neural-lock#1-introduction)
-2. [Terminology](https://github.com/rosieRRRRR/neural-lock#2-terminology)
-3. [Architecture](https://github.com/rosieRRRRR/neural-lock#3-architecture)
-4. [Signal Sources and State Classification](https://github.com/rosieRRRRR/neural-lock#4-signal-sources-and-state-classification)
-5. [Policy Integration](https://github.com/rosieRRRRR/neural-lock#5-policy-integration)
-6. [Bitcoin Integration Patterns](https://github.com/rosieRRRRR/neural-lock#6-bitcoin-integration-patterns)
-7. [Security Properties](https://github.com/rosieRRRRR/neural-lock#7-security-properties)
-8. [Privacy Protections](https://github.com/rosieRRRRR/neural-lock#8-privacy-protections)
-9. [Threat Model](https://github.com/rosieRRRRR/neural-lock#9-threat-model)
-10. [Integration with PQSF Ecosystem](https://github.com/rosieRRRRR/neural-lock#10-integration-with-pqsf-ecosystem)
-11. [Implementation Guidance](https://github.com/rosieRRRRR/neural-lock#11-implementation-guidance)
-12. [Comparison to Existing Solutions](https://github.com/rosieRRRRR/neural-lock#12-comparison-to-existing-solutions)
-13. [Future Work](https://github.com/rosieRRRRR/neural-lock#13-future-work)
-14. [References](https://github.com/rosieRRRRR/neural-lock#14-references)
-15. [Annexes](https://github.com/rosieRRRRR/neural-lock#15-annexes)
-16. [Acknowledgements](https://github.com/rosieRRRRR/neural-lock#16-acknowledgements)
+1. [Introduction](#1-introduction)
+2. [Terminology](#2-terminology)
+3. [Architecture](#3-architecture)
+4. [Signal Sources and State Classification](#4-signal-sources-and-state-classification)
+5. [Policy Integration](#5-policy-integration)
+6. [Bitcoin Integration Patterns](#6-bitcoin-integration-patterns)
+7. [Security Properties](#7-security-properties)
+8. [Privacy Protections](#8-privacy-protections)
+9. [Threat Model](#9-threat-model)
+10. [Integration with PQ Ecosystem](#10-integration-with-pq-ecosystem)
+11. [Implementation Guidance](#11-implementation-guidance)
+12. [Comparison to Existing Solutions](#12-comparison-to-existing-solutions)
+13. [Future Work](#13-future-work)
+14. [References](#14-references)
+15. [Annexes](#15-annexes)
+16. [Acknowledgements](#16-acknowledgements)
+
 
 ---
 
@@ -140,12 +142,26 @@ Neural Lock is opt-in and is expected to be most useful for high-risk users and 
 * Advisory Mode: warning-only mode with no enforcement
 * Enforcement Mode: gating mode requiring predicate satisfaction or compensating controls
 
-Key terms from the PQSF ecosystem:
+Key terms from the PQ ecosystem:
 
 * ConsentProof: user authorisation artefact
 * Epoch Clock: verifiable time source
 * PQHD: Post-Quantum Hierarchical Deterministic Wallet
+* PQEH: Post-Quantum Execution Hardening
 * Multi-Predicate Custody: authorisation requiring multiple conditions
+* ZET/ZEB: Zero-Exposure Transaction and Broadcast
+---
+
+## 2A. Explicit Dependencies
+
+| Specification | Minimum Version | Purpose |
+|---------------|-----------------|---------|
+| PQSEC | ≥ 2.0.1 | Enforcement of operator_state_ok predicate |
+| PQSF | ≥ 2.0.2 | Canonical encoding for NeuralAttestation |
+| PQHD | ≥ 1.1.0 | Custody integration and predicate composition |
+| Epoch Clock | ≥ 2.1.1 | Freshness binding for attestations |
+
+Neural Lock produces attestation artefacts only. All enforcement is performed by PQSEC.
 
 ---
 
@@ -418,6 +434,50 @@ When the device enters sleep, suspend, or equivalent power-saving states:
 3. during sleep, classifier outcome is UNAVAILABLE
 4. if an operation requiring Neural Lock is attempted immediately after wake and fresh signals are not yet available, classifier outcome MUST be UNAVAILABLE and Section 11.8 MUST apply
 
+## 4.11 UNAVAILABLE Classification Semantics (Normative)
+
+Neural Lock supports explicit unavailability of operator-state classification.
+
+### 4.11.1 ClassifierOutcome UNAVAILABLE
+
+`UNAVAILABLE` indicates that Neural Lock cannot produce a valid NeuralAttestation due to genuine absence of required signals or operating prerequisites.
+
+Examples (non-exhaustive):
+
+* device sleep or wake transition
+* insufficient sensor coverage
+* sensor dropout or hardware unavailability
+* power state transitions preventing signal stabilization
+
+`UNAVAILABLE` does not assert NORMAL, STRESSED, DURESS, or IMPAIRED. It asserts absence of evaluable evidence only.
+
+### 4.11.2 Attestation Production Rules
+
+1. When ClassifierOutcome is `UNAVAILABLE`, Neural Lock MUST NOT produce a NeuralAttestation.
+2. Neural Lock MUST NOT emit a best-effort, stale, or heuristic attestation to avoid UNAVAILABLE.
+3. Neural Lock MUST NOT downgrade UNAVAILABLE to any NeuralState.
+4. Neural Lock MUST surface UNAVAILABLE explicitly to consuming policy engines.
+
+### 4.11.3 Enforcement Boundary
+
+Neural Lock does not map UNAVAILABLE to permission or refusal.
+
+All enforcement decisions derived from UNAVAILABLE outcomes are performed exclusively by PQSEC according to active policy and operation class.
+
+### 4.11.4 Determinism Requirement
+
+Given identical local signal availability and operating conditions, Neural Lock MUST produce identical ClassifierOutcome results, including identical UNAVAILABLE classifications.
+
+### 4.11.5 Audit and Logging
+
+Local implementations MAY log UNAVAILABLE events for diagnostic or audit purposes.
+
+Such logs:
+
+1. MUST remain local to the device,
+2. MUST NOT include raw biometric or behavioural signal data, and
+3. MUST NOT be exported or treated as enforcement artefacts.
+
 ---
 
 ## 5. Policy Integration
@@ -566,9 +626,9 @@ To reduce social predictability, deployments MAY select a different hardened mar
 * BIP32 derivation paths
 * PSBT v2
 
-### 6.5 Execution Revelation Gating (ZET and QH-EP)
+### 6.5 Execution Revelation Gating (ZET and PQEH)
 
-When used with ZET or QH-EP execution patterns:
+When used with ZET or PQEH execution patterns:
 
 1. Neural Lock evaluation MUST complete before execution revelation
 2. S1 revelation MUST NOT occur unless operator_state_ok is OK
@@ -657,7 +717,7 @@ Detection time is deployment-dependent and MUST be documented.
 | Full device compromise        | classifier runs on device   | PQVL plus secure boot plus isolation            |
 | Correlated guardian coercion  | guardians coerced together  | quorum diversity, independent guardians, delays |
 | Key extraction                | not a key-protection system | hardware isolation plus PQHD quorum             |
-| Post-broadcast quantum attack | Bitcoin limitation          | QH-EP plus ZET plus ZEB discipline              |
+| Post-broadcast quantum attack | Bitcoin limitation          | PQEH plus ZET plus ZEB discipline              |
 
 ### 9.3 Honest Limitations
 
@@ -812,7 +872,7 @@ Other future work:
 * Epoch Clock
 * ZET
 * ZEB
-* QH-EP
+* PQEH
 * PQAI
 * Bitcoin BIPs: 32, 174, 341, 370
 
