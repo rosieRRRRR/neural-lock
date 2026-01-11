@@ -298,7 +298,7 @@ pub enum NeuralState {
     DURESS,
     IMPAIRED,
 }
-```
+````
 
 IMPAIRED indicates an operator condition in which high-risk decisions are more likely to be unsafe, for example intoxication, acute illness, concussion, severe sleep deprivation, or severe cognitive overload. IMPAIRED is a policy signal, not a medical determination.
 
@@ -383,7 +383,7 @@ Contradictory signals:
 * weighted voting among enabled and valid signals
 * if confidence below policy minimum: escalate to DURESS where classification is available
 
-### 4.8 Sensor Spoofing and Liveness
+### 4.8 Liveness Detection
 
 Spoofing indicators (non-exhaustive):
 
@@ -413,6 +413,20 @@ Liveness safety requirements:
 3. liveness prompts MUST be consistent with normal-looking wallet UX and MUST NOT explicitly signal "coercion detection"
 4. liveness MUST be triggered by operation class policy, not by classification outcome
 5. liveness evaluation MUST be deterministic and MUST NOT require network connectivity
+
+To resist spoofing and replayed sensor streams, implementations SHOULD implement multi-signal liveness indicators.
+
+**Recommended indicators (non-exhaustive):**
+
+* **Cross-signal correlation**: verify consistency between independent signal channels (for example physiological vs behavioural timing).
+* **Physiological plausibility bounds**: reject values outside deployment-defined bounds.
+* **Rate-of-change consistency**: detect unnatural stability (for example zero variance over a defined window) and abrupt discontinuities.
+
+These indicators produce optional evidence only.
+PQSEC evaluates all inputs and applies policy.
+
+No liveness check is infallible.
+Neural Lock reduces coercion success rates; it does not guarantee detection.
 
 ### 4.9 Network Independence (Normative)
 
@@ -722,6 +736,16 @@ Detection time is deployment-dependent and MUST be documented.
 ### 9.3 Honest Limitations
 
 Neural Lock does not prove coercion. It reduces risk by detecting anomalous operator states correlated with elevated attack likelihood and applying fail-safe policy constraints.
+
+### 9.4 Guardian Selection Guidance (Informative)
+
+To reduce risk of correlated compromise, guardians SHOULD be selected with diversity in mind:
+
+- **Geographic distribution**: guardians in separate physical regions
+- **Jurisdictional separation**: guardians under different legal regimes
+- **Technical heterogeneity**: diverse hardware, OS, and network providers
+
+This section is guidance only and does not modify quorum enforcement semantics, which are defined and enforced by PQSEC.
 
 ---
 
