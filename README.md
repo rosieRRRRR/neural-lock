@@ -159,7 +159,7 @@ Key terms from the PQ ecosystem:
 | PQSEC | ≥ 2.0.1 | Enforcement of operator_state_ok predicate |
 | PQSF | ≥ 2.0.2 | Canonical encoding for NeuralAttestation |
 | PQHD | ≥ 1.1.0 | Custody integration and predicate composition |
-| Epoch Clock | ≥ 2.1.1 | Freshness binding for attestations |
+| Epoch Clock | ≥ 2.0.0 | Freshness binding for attestations |
 
 Implementations MAY evaluate using earlier versions, but MUST NOT claim conformance while below the stated minimums.
 
