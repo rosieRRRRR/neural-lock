@@ -161,6 +161,8 @@ Key terms from the PQ ecosystem:
 | PQHD | ≥ 1.1.0 | Custody integration and predicate composition |
 | Epoch Clock | ≥ 2.1.1 | Freshness binding for attestations |
 
+Implementations MAY evaluate using earlier versions, but MUST NOT claim conformance while below the stated minimums.
+
 Neural Lock produces attestation artefacts only. All enforcement is performed by PQSEC.
 
 ---
