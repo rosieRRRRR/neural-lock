@@ -1,21 +1,24 @@
-# Neural Lock — Human-State-Aware Policy Gate for Bitcoin Custody
+# Neural Lock -- Operator State Evidence
 
-**An Open Standard for Coercion-Resilient, Policy-Bound Bitcoin Operations**
+**Reference Implementation: Bitcoin Custody Systems**
 
-* **Specification Version:** 1.0.0
-* **Status:** Public beta
+* **Specification Version:** 1.1.0
+* **Status:** Implementation Ready
 * **Date:** 2026
 * **Author:** rosiea
-* **Contact:** PQRosie@proton.me
+* **Contact:** [PQRosie@proton.me](mailto:PQRosie@proton.me)
 * **Licence:** Apache License 2.0 — Copyright 2026 rosiea
+* **PQ Ecosystem:** CORE — The PQ Ecosystem is a post-quantum security framework built on deterministic enforcement, fail-closed semantics, and refusal-driven authority. Bitcoin is the reference deployment. It is not the scope.
 
 ---
 
-## Abstract
+## Summary
 
-Neural Lock is a non-authoritative policy evidence mechanism that conditions high-risk operations on locally-classified human cognitive and physiological state signals. By detecting risk-correlated states consistent with duress, coercion, impairment, or cognitive overload, Neural Lock reduces the success rates of coercion-driven compromise without replacing cryptographic authority. This specification defines the architecture, integration patterns, and security properties necessary for implementation in Bitcoin custody systems, for both self-custody and institutional custody, with particular focus on reducing the success rates of physical coercion attacks (the "$5 wrench attack") while preserving user sovereignty and privacy.
+Neural Lock defines how systems record and report operator state signals relevant to security and coercion risk.
 
-Key Innovation: Neural Lock adds an operator state predicate as a fourth dimension of Bitcoin security, complementing cryptographic keys, temporal controls (timelocks), and distributed authority (multisig).
+It specifies how posture indicators and optional duress signals are emitted as constrained, non-authoritative signals without directly triggering actions.
+
+Neural Lock does not enforce policy. Its outputs are evaluated by PQSEC as part of broader security decisions.
 
 ---
 
@@ -23,19 +26,35 @@ Key Innovation: Neural Lock adds an operator state predicate as a fourth dimensi
 
 1. [Introduction](#1-introduction)
 2. [Terminology](#2-terminology)
+   * 2A. [Explicit Dependencies](#2a-explicit-dependencies)
 3. [Architecture](#3-architecture)
 4. [Signal Sources and State Classification](#4-signal-sources-and-state-classification)
+   * 4.11 [UNAVAILABLE Classification Semantics (Normative)](#411-unavailable-classification-semantics-normative)
+   * 4.12 [Manual Duress Signal (Normative if Implemented)](#412-manual-duress-signal-normative-if-implemented)
 5. [Policy Integration](#5-policy-integration)
 6. [Bitcoin Integration Patterns](#6-bitcoin-integration-patterns)
+   * 6A. [Beyond Bitcoin: General Application Domains](#6a-beyond-bitcoin-general-application-domains) (Informative)
 7. [Security Properties](#7-security-properties)
 8. [Privacy Protections](#8-privacy-protections)
 9. [Threat Model](#9-threat-model)
 10. [Integration with PQ Ecosystem](#10-integration-with-pq-ecosystem)
-11. [Implementation Guidance](#11-implementation-guidance)
+    * 10.1 [Generalised Security Gating](#101-generalised-security-gating) (General Applicability)
+11. [Implementation Requirements and Guidance](#11-implementation-requirements-and-guidance)
 12. [Comparison to Existing Solutions](#12-comparison-to-existing-solutions)
 13. [Future Work](#13-future-work)
 14. [References](#14-references)
 15. [Annexes](#15-annexes)
+    * [Annex A: State Classification Pseudocode](#annex-a-state-classification-pseudocode-normative) (Normative)
+    * [Annex B: Spoofing and Liveness Detection Pseudocode](#annex-b-spoofing-and-liveness-detection-pseudocode-reference) (Reference)
+    * [Annex C: NeuralAttestation Construction and Signing](#annex-c-neuralattestation-construction-and-signing-reference) (Reference)
+    * [Annex D: PSBT Integration and Proprietary Field Versioning](#annex-d-psbt-integration-and-proprietary-field-versioning-reference) (Reference)
+    * [Annex E: Conformance Test Scenarios](#annex-e-conformance-test-scenarios-normative) (Normative)
+    * [Annex F: Decoy Wallet Derivation and Constraints](#annex-f-decoy-wallet-derivation-and-constraints-reference) (Reference)
+    * [Annex G: Training Mode and Baseline Computation](#annex-g-training-mode-and-baseline-computation-informative) (Informative)
+    * [Annex H: Break Glass Flow](#annex-h-break-glass-flow-informative) (Informative)
+    * [Annex I: Generic Operator State Gating Interface](#annex-i-generic-operator-state-gating-interface-informative) (Informative)
+    * [Annex J: Quick Start Guide](#annex-j-quick-start-guide-informative) (Informative)
+    * [Annex K: Compliance Checklist](#annex-k-compliance-checklist-informative) (Informative)
 16. [Acknowledgements](#16-acknowledgements)
 
 
@@ -76,7 +95,7 @@ Neural Lock does not verify intent. It classifies risk-correlated operator state
 2. Fail-safe: uncertain or degraded signals reduce permissions, never expand them
 3. Local and private: all processing occurs on-device; raw biometric data is never exported
 4. Policy-bound: signals map to coarse states that feed existing policy engines
-5. Revocable: users can disable Neural Lock or downgrade to advisory-only mode
+5. User-configurable: deployments MAY allow advisory-only mode by policy; disabling Neural Lock is a policy change and MUST NOT expand authority
 6. Transparent: state transitions are logged locally for user audit
 
 ### 1.5 Authority Boundary
@@ -146,20 +165,28 @@ Key terms from the PQ ecosystem:
 
 * ConsentProof: user authorisation artefact
 * Epoch Clock: verifiable time source
-* PQHD: Post-Quantum Hierarchical Deterministic Wallet
-* PQEH: Post-Quantum Execution Hardening
+* PQHD: Post-Quantum Hierarchical Deterministic Custody
 * Multi-Predicate Custody: authorisation requiring multiple conditions
 * ZET/ZEB: Zero-Exposure Transaction and Broadcast
 ---
 
 ## 2A. Explicit Dependencies
 
+### Core Dependencies (All Deployments)
+
 | Specification | Minimum Version | Purpose |
 |---------------|-----------------|---------|
-| PQSEC | ≥ 2.0.1 | Enforcement of operator_state_ok predicate |
-| PQSF | ≥ 2.0.2 | Canonical encoding for NeuralAttestation |
-| PQHD | ≥ 1.1.0 | Custody integration and predicate composition |
-| Epoch Clock | ≥ 2.0.0 | Freshness binding for attestations |
+| PQSEC | ≥ 2.0.3 | Enforcement of operator_state_ok predicate |
+| PQSF | ≥ 2.0.3 | Canonical encoding for NeuralAttestation |
+| Epoch Clock | ≥ 2.1.0 | Freshness binding for attestations and alignment with PQSEC staleness model |
+
+### Reference Implementation Dependencies (Bitcoin Custody)
+
+| Specification | Minimum Version | Purpose |
+|---------------|-----------------|---------|
+| PQHD | ≥ 1.2.0 | Bitcoin custody integration and predicate composition |
+
+For non-Bitcoin deployments, PQHD is not required. Consuming systems must provide equivalent predicate composition and enforcement mechanisms appropriate to their domain.
 
 Implementations MAY evaluate using earlier versions, but MUST NOT claim conformance while below the stated minimums.
 
@@ -234,6 +261,8 @@ Requirements:
 
 Neural Lock does not define encoding rules independently and fully inherits canonical encoding requirements from PQSF.
 
+Hashing note: All hashes in Neural Lock follow PQSF §9 via the active CryptoSuiteProfile (Tier 2 SHAKE256-256, 32 bytes) unless explicitly stated otherwise.
+
 ---
 
 ## 4. Signal Sources and State Classification
@@ -300,7 +329,7 @@ pub enum NeuralState {
     DURESS,
     IMPAIRED,
 }
-````
+```
 
 IMPAIRED indicates an operator condition in which high-risk decisions are more likely to be unsafe, for example intoxication, acute illness, concussion, severe sleep deprivation, or severe cognitive overload. IMPAIRED is a policy signal, not a medical determination.
 
@@ -325,6 +354,12 @@ Robust deviation score:
 ```
 D = Σ(w_i * |s_i - median_i| / mad_i)
 ```
+
+Where:
+* `median_i` is the baseline median for signal i (from user-specific baseline B)
+* `mad_i` is the baseline MAD (Median Absolute Deviation) for signal i
+* `s_i` is the current signal value for signal i
+* `w_i` is the fixed-point weight for signal i
 
 MAD clamping requirement:
 
@@ -359,7 +394,7 @@ confidence = confidence_value / confidence_scale
 Recommended:
 
 * confidence_scale = 1000
-* confidence_value in [0, 1000]
+* confidence_value in [1, 1000] for emitted attestations (0 reserved for internal/non-emitted cases)
 
 Confidence semantics:
 
@@ -369,7 +404,7 @@ Confidence semantics:
 
 ### 4.6 State Persistence and Debounce
 
-* minimum state duration: 5 seconds (debouncing)
+* minimum state duration: policy-defined (RECOMMENDED: 5 seconds) (debouncing)
 * state transitions require sustained signal change
 * DURESS is sticky as defined in Section 7.3
 
@@ -378,12 +413,19 @@ Confidence semantics:
 Missing signals:
 
 * if primary signals unavailable: reduce confidence, bias toward STRESSED where supported by remaining valid signals
+* this fallback behaviour MUST be policy-configurable
+* deployments SHOULD require compensating predicates (guardian approval, delays) for meaningful operations when relying on degraded signal sets
 * if signals are insufficient to classify: outcome MUST be UNAVAILABLE
 
 Contradictory signals:
 
 * weighted voting among enabled and valid signals
-* if confidence below policy minimum: escalate to DURESS where classification is available
+* if confidence below policy minimum due to signal contradiction (not absence): escalate to DURESS only when:
+  - sufficient signal coverage exists (primary signals present), AND
+  - signals are contradictory or show anomalous patterns, AND
+  - spoofing or liveness failure is not detected
+* if confidence is low due to signal absence or staleness: outcome MUST be UNAVAILABLE
+* low confidence from insufficient evidence MUST NOT map to DURESS
 
 ### 4.8 Liveness Detection
 
@@ -396,7 +438,7 @@ Spoofing indicators (non-exhaustive):
 Spoofing classification:
 
 1. classifier outcome MUST be AVAILABLE with NeuralState = DURESS
-2. confidence MUST be set to minimum representable value
+2. confidence_value MUST be set to the minimum non-zero representable value (policy-default: 1/confidence_scale)
 3. a deterministic spoofing_reason code MUST be recorded locally
 4. raw signal data MUST NOT be retained
 
@@ -450,7 +492,7 @@ When the device enters sleep, suspend, or equivalent power-saving states:
 3. during sleep, classifier outcome is UNAVAILABLE
 4. if an operation requiring Neural Lock is attempted immediately after wake and fresh signals are not yet available, classifier outcome MUST be UNAVAILABLE and Section 11.8 MUST apply
 
-## 4.11 UNAVAILABLE Classification Semantics (Normative)
+### 4.11 UNAVAILABLE Classification Semantics (Normative)
 
 Neural Lock supports explicit unavailability of operator-state classification.
 
@@ -490,9 +532,71 @@ Local implementations MAY log UNAVAILABLE events for diagnostic or audit purpose
 
 Such logs:
 
-1. MUST remain local to the device,
-2. MUST NOT include raw biometric or behavioural signal data, and
+1. MUST remain local to the device.
+2. MUST NOT include raw biometric or behavioural signal data.
 3. MUST NOT be exported or treated as enforcement artefacts.
+4. MUST NOT include timestamps with sub-tick precision.
+5. MUST NOT include signal-specific failure reasons or sensor identifiers.
+
+---
+
+### 4.12 Manual Duress Signal (Normative if Implemented)
+
+### 4.12.1 Purpose
+
+Neural Lock MAY support a holder-issued manual signal to accelerate transition into a coercion posture during time-critical events.
+
+Manual duress signals are evidence only. They grant no authority and cannot enable operations.
+
+### 4.12.2 Signal Types
+
+A conformant implementation MAY support one or more of the following local-only signal types:
+
+* **phrase cue** (speech-to-text local match)
+* **gesture cue** (UI sequence, button pattern, touch cadence)
+* **hardware cue** (side button pattern, wearable tap pattern)
+
+Implementations MUST NOT require a specific signal type.
+
+### 4.12.3 Default Behaviour
+
+When a valid manual duress signal is detected:
+
+1. The classifier outcome MUST be AVAILABLE.
+2. The resulting NeuralState MUST be set to DURESS.
+3. `confidence_value` MUST be set to the minimum representable value (e.g. 1/1000) to indicate "manual assertion, not sensor coverage".
+4. A NeuralAttestation MUST be generated and bound to the active `session_id` and `intent_hash` when present.
+
+Manual signals MUST be treated as one-way: they can move into DURESS but MUST NOT move out of DURESS.
+
+### 4.12.4 Signal Scope
+
+When a session is active, the manual duress signal MUST be bound to the active `session_id`.
+
+When no session is active, the manual duress signal MUST apply at device scope and MUST govern all subsequent sessions until cleared per §7.3 exit conditions.
+
+### 4.12.5 Duress Exit
+
+Manual duress signals do not define their own exit path. The duress state persists until cleared via the exit conditions defined in §7.3 (manual clearance under sustained NORMAL, guardian-governed clearance, or factory reset).
+
+### 4.12.6 Anti-Coercion Safety Requirements
+
+Because adversaries may observe or compel manual signals:
+
+1. Manual duress signals MUST NOT produce any externally visible acknowledgement distinct from normal behaviour.
+2. Manual duress signals MUST NOT display "duress mode enabled" or any equivalent UI indication.
+3. Manual signal configuration MUST support deterministic rotation of the phrase/gesture keyed by a local secret and Epoch Clock tick, so observers cannot predict future cues.
+4. Implementations MUST NOT store the raw spoken phrase, raw audio, or raw gesture telemetry outside the secure local boundary.
+
+### 4.12.7 Authority Boundary
+
+Manual duress signals:
+
+* MUST NOT permit any operation
+* MUST NOT override policy denials
+* MUST NOT relax any predicate requirement
+
+They exist solely to increase refusal and enable constrained decoy posture where policy permits.
 
 ---
 
@@ -522,17 +626,70 @@ pub struct NeuralAttestation {
     pub signal_sources: Vec<SignalSource>,
     pub device_id: [u8; 32],
 
+    // Binding fields to prevent replay and cross-session reuse
+    pub session_id: Option<[u8; 32]>,
+    pub intent_hash: Option<[u8; 32]>,
+
+    // Evidence producer integrity binding (see §5.9)
+    pub classifier_build_hash: [u8; 32],
+
     // Profile indirection (no hard-coded algorithms)
     pub suite_profile: String,
     pub signature: Vec<u8>,
 }
 ```
 
-### 5.2 Tick Units Requirement
+### 5.2 Intent and Session Binding (Strongly Recommended)
+
+To prevent attestation replay and cross-session reuse, implementations SHOULD include binding fields:
+
+**session_id:**
+
+* Optional [u8; 32] binding to current authentication/application session
+* SHOULD be included for all session-scoped operations
+* MUST be derived deterministically from session context
+* MUST change on session boundaries (re-authentication, app restart, time expiry)
+
+**intent_hash:**
+
+* Optional [u8; 32] binding to specific operation intent
+* SHOULD be included for Authoritative operations (custody, signing, high-value)
+* MAY be omitted for continuous monitoring scenarios
+* When present, MUST be the canonical hash of the operation being authorized
+
+**PQSEC Integration Requirement:**
+
+When session_id or intent_hash is present in NeuralAttestation:
+
+* PQSEC MUST verify binding matches current operation context
+* Binding mismatch MUST result in operator_state_ok = FALSE (per PQSEC §8A.1 ternary predicate model). A binding mismatch is definitive evidence of invalid state, not absence of evidence, and therefore maps to FALSE rather than UNAVAILABLE.
+* PQSEC MUST NOT accept NeuralAttestation across session boundaries without explicit policy
+
+When binding fields are absent:
+
+* PQSEC MUST treat NeuralAttestation as session-scoped by default
+* PQSEC MUST implement replay protection via freshness + decision_id tracking
+* Deployments accepting unbound attestations MUST document the security trade-off
+
+### 5.2A ClassifierOutcome to PredicateResult Mapping (Normative)
+
+The following table defines the normative mapping from Neural Lock ClassifierOutcome values to PQSEC predicate results for `operator_state_ok`:
+
+| ClassifierOutcome | operator_state_ok PredicateResult | Notes |
+|-------------------|-----------------------------------|-------|
+| NORMAL            | TRUE                              | Operator state verified nominal |
+| STRESSED          | TRUE (with constraints per policy) | Policy may restrict operation classes |
+| DURESS            | FALSE                             | Definitive evidence of compromised state |
+| IMPAIRED          | FALSE                             | Definitive evidence of compromised state |
+| UNAVAILABLE       | UNAVAILABLE                       | No evidence available; fail-closed per PQSEC §8A |
+
+STRESSED mapping to TRUE with constraints means: the predicate evaluates TRUE, but active policy MAY restrict which operation classes proceed when STRESSED is the underlying classification. The constraint mechanism is policy-defined. PQSEC does not grant authority based on Neural Lock output; the predicate result informs the enforcement decision.
+
+### 5.3 Tick Units Requirement
 
 freshness_window_ticks is expressed in the same units as the Epoch Clock tick. Implementations MUST NOT treat tick values as seconds unless the Epoch Clock profile defines that mapping.
 
-### 5.3 suite_profile Registry Requirements (Minimal)
+### 5.4 suite_profile Registry Requirements (Minimal)
 
 suite_profile MUST be a stable identifier for the cryptographic suite used to sign NeuralAttestation.
 
@@ -543,7 +700,7 @@ Requirements:
 3. suite_profile MUST determine at minimum: signature algorithm family and parameters, public key format and verification rules, and domain separation rules if any
 4. unknown suite_profile values MUST cause rejection
 
-### 5.4 device_id Lifecycle and Privacy Requirements
+### 5.5 device_id Lifecycle and Privacy Requirements
 
 device_id identifies the attestation-producing device within a deployment.
 
@@ -554,7 +711,7 @@ Requirements:
 3. implementations SHOULD support device_id rotation by re-enrollment
 4. device_id MUST NOT embed plaintext hardware serial numbers or globally unique identifiers
 
-### 5.5 SignalSource Schema and Ordering (Normative)
+### 5.6 SignalSource Schema and Ordering (Normative)
 
 SignalSource identifies which signal channels were used, without revealing raw data.
 
@@ -572,13 +729,13 @@ Ordering requirements:
 1. signal_sources MUST be sorted deterministically by source_id using lexicographic byte order over UTF-8
 2. re-encoding after decode MUST preserve identical ordering
 
-### 5.6 Signature Input
+### 5.7 Signature Input
 
 The signature MUST be computed over the canonical CBOR encoding of the NeuralAttestation with signature omitted.
 
 attestation_version MUST be included in the signed payload.
 
-### 5.7 Policy Evaluation Order
+### 5.8 Policy Evaluation Order
 
 Policy evaluation order for operations that require Neural Lock:
 
@@ -588,6 +745,104 @@ Policy evaluation order for operations that require Neural Lock:
 4. policy caps and constraints
 5. custody quorum and role constraints
 6. signature validation and execution
+
+---
+
+### 5.9 Evidence Producer Integrity Binding (Normative)
+
+#### 5.9.1 Purpose
+
+This section binds Neural Lock attestations to a specific, auditable classifier build to prevent compromised or substituted evidence producers from emitting structurally valid but semantically malicious attestations.
+
+#### 5.9.2 Classifier Build Hash
+
+Each NeuralAttestation MUST include a `classifier_build_hash` field.
+
+```
+classifier_build_hash: bstr(32)
+```
+
+Definition:
+
+```
+classifier_build_hash = HASH( canonical_bytes_of_classifier_binary )
+```
+
+Where `HASH` is the active hash function defined by the CryptoSuiteProfile (see PQSF §9).
+
+Rules:
+
+1. The input MUST be the exact executable or WASM binary used for classification.
+2. Dynamic libraries, model weights, and configuration files that influence classification MUST be included in the hashed material or referenced by an included manifest hash.
+3. The hash MUST be stable across identical builds (reproducible-build compatible).
+
+#### 5.9.3 Manifest Option (Optional)
+
+Implementations MAY use a manifest for multi-component classifiers:
+
+```
+classifier_manifest = {
+  binary_hash: bstr,
+  model_weights_hash: bstr,
+  config_hash: bstr
+}
+classifier_build_hash = HASH( canonical(classifier_manifest) )
+```
+
+`canonical(classifier_manifest)` MUST mean PQSF deterministic CBOR encoding.
+
+#### 5.9.4 Authority Boundary
+
+`classifier_build_hash` is evidence only. It MUST NOT grant authority or override enforcement. It exists solely for verification and pinning by consuming specifications (see PQSEC §22A).
+
+---
+
+### 5.10 Emission Discipline (Normative)
+
+#### 5.10.1 Scope
+
+This section constrains when Neural Lock may emit NeuralAttestations and at what frequency to prevent behavioural fingerprinting from state telemetry.
+
+#### 5.10.2 Operation-Scoped Emission Only
+
+Neural Lock MUST emit NeuralAttestations only in the context of an operation attempt that requires operator-state evidence.
+
+1. Continuous background emission is prohibited.
+2. Periodic telemetry emission is prohibited.
+3. NeuralAttestation production MUST be triggered only by an operation-class gate.
+
+#### 5.10.3 UNAVAILABLE Non-Distinguishability at External Boundary
+
+UNAVAILABLE behaviour MUST NOT create externally observable fingerprints.
+
+1. If ClassifierOutcome is UNAVAILABLE, Neural Lock MUST produce no attestation.
+2. Consuming components MUST map UNAVAILABLE to the same external refusal surface as any other refusal cause (see PQSEC §28A).
+3. Neural Lock MUST NOT export or log distinct UNAVAILABLE reason codes outside the local device.
+
+#### 5.10.4 Rate Limits
+
+Neural Lock MUST apply a strict emission rate limit:
+
+* maximum one attestation per `intent_hash` per session
+* maximum one attestation per `session_id` per operation attempt
+
+Attempts to request multiple attestations for the same intent MUST return the prior attestation if still fresh, or return UNAVAILABLE if freshness cannot be established without re-sampling.
+
+If an implementation caches and replays a prior attestation for the same (session_id, intent_hash) within freshness, the cache MUST be scoped to the local signing domain. Cache persistence across restarts is RECOMMENDED. If cache integrity cannot be guaranteed, the implementation MUST fail closed by returning UNAVAILABLE rather than emitting a second attestation.
+
+#### 5.10.5 Device Identifier Privacy
+
+`device_id` MUST be derived to prevent cross-deployment correlation.
+
+1. `device_id` MUST be scoped to a single deployment or wallet domain.
+2. `device_id` rotation SHOULD be supported by re-enrolment.
+3. `device_id` MUST NOT include hardware serial numbers or platform identifiers.
+
+Note: These rules extend §5.5 (device_id Lifecycle and Privacy Requirements) with explicit correlation-resistance requirements.
+
+#### 5.10.6 Export Controls
+
+Any export of Neural Lock artefacts MUST be governed by a ReceiptExportPolicy (PQSF §17A). Default behaviour MUST be local-only storage.
 
 ---
 
@@ -635,21 +890,216 @@ To reduce social predictability, deployments MAY select a different hardened mar
 2. primary and decoy paths remain strictly separated
 3. the chosen marker is documented for conformance within the deployment
 
-### 6.4 Bitcoin Primitives Used
+### 6.4 Bitcoin Integration Context (Informative)
 
-* CLTV and CSV
-* standard P2WPKH, P2WSH, P2TR
-* BIP32 derivation paths
-* PSBT v2
+Neural Lock integrates with Bitcoin custody systems without constraining output types or script construction. Typical deployment contexts include:
 
-### 6.5 Execution Revelation Gating (ZET and PQEH)
+* **Timelocks:** CLTV and CSV for delay enforcement
+* **Output types:** P2WPKH, P2WSH, P2TR (no restriction)
+* **Key derivation:** BIP32 for wallet structure  
+* **Transaction format:** PSBT v2 for policy composition
 
-When used with ZET or PQEH execution patterns:
+Neural Lock does not define spend paths, script templates, or output constraints. Policy engines determine these based on operator_state_ok evaluation.
+
+### 6.5 Execution Revelation Gating (ZET)
+
+When used with ZET execution patterns:
 
 1. Neural Lock evaluation MUST complete before execution revelation
-2. S1 revelation MUST NOT occur unless operator_state_ok is OK
-3. if state enters DURESS or IMPAIRED after intent formation, execution MUST abort and S1 MUST NOT be revealed
+2. Execution MUST NOT proceed unless operator_state_ok is OK
+3. if state enters DURESS or IMPAIRED after intent formation, execution MUST abort
 4. UNAVAILABLE outcome MUST follow Section 11.8
+
+---
+
+## 6A. Beyond Bitcoin: General Application Domains (Informative)
+
+While this specification focuses on Bitcoin custody as the primary application, Neural Lock's architecture is domain-agnostic. The operator_state_ok predicate may be applied to any authorization context where coercion resistance is valuable.
+
+### 6A.1 Applicable Domains
+
+**Multi-Chain Cryptocurrency Custody**
+
+* Ethereum, Solana, and other blockchain ecosystems
+* Cross-chain bridge operations
+* DEX trading approvals
+* NFT transfers and marketplace operations
+* Staking/unstaking operations
+
+**Traditional Finance**
+
+* Wire transfer authorization
+* Large withdrawal approvals
+* Account closure or beneficiary changes
+* Trading limit modifications
+* Vault access in institutional custody
+
+**Enterprise Systems**
+
+* Root or admin access to production systems
+* Data deletion operations (GDPR, retention policies)
+* Cryptographic key generation and distribution
+* Certificate issuance and revocation
+* Backup restoration authorization
+
+**Healthcare**
+
+* Controlled substance prescription authorization
+* Life support system modifications
+* Access to sensitive patient records
+* Organ donation consent verification
+* Medical device parameter changes
+
+**Industrial Control Systems**
+
+* Safety system override authorization
+* Emergency shutdown procedures
+* Critical process parameter changes
+* Hazardous material handling approvals
+
+**Legal and Notary Services**
+
+* Document signing under potential duress
+* Power of attorney execution
+* Will modifications
+* Property transfer authorizations
+
+### 6A.2 Integration Pattern for Non-Bitcoin Domains
+
+When applying Neural Lock outside Bitcoin custody:
+
+**1. Define Operation Classification**
+
+Map your operations to Neural Lock operation classes:
+* **Authoritative:** Operations with irreversible consequences (transfers, deletions, system changes)
+* **Non-Authoritative:** Operations that can be reversed or are low-risk
+
+**2. Map States to Domain Policies**
+
+Define domain-appropriate responses for each NeuralState:
+
+* **NORMAL:** Standard authorization flow
+* **STRESSED:** Apply constraints (approval requirements, delays, reduced limits, enhanced logging)
+* **DURESS:** Route to safe alternative (analogous to decoy wallet) or require additional verification
+* **IMPAIRED:** Deny high-risk operations or require guardian/supervisor approval
+
+**3. Implement Intent Binding**
+
+For Authoritative operations:
+* Compute intent_hash from operation parameters
+* Include in NeuralAttestation for binding verification
+* Prevents attestation replay across different operations
+
+**4. Define Session Boundaries**
+
+Establish clear session lifecycle:
+* Authentication events that start sessions
+* Events that terminate sessions (logout, timeout, re-authentication required)
+* Generate session_id at session start
+* Include in NeuralAttestation for session binding
+
+**5. Use operator_state_ok as Policy Predicate**
+
+Integrate Neural Lock evaluation into authorization logic:
+```
+if operation.is_high_risk():
+    attestation = neural_lock.get_current_attestation()
+    
+    if attestation is None:
+        return handle_unavailable(operation)
+    
+    result = policy_engine.evaluate(
+        operation=operation,
+        operator_state_ok=attestation.validate(),
+        other_predicates=...
+    )
+    
+    return enforcement_engine.enforce(result)
+```
+
+**6. Defer Enforcement to Domain Policy Engine**
+
+Neural Lock produces evidence only. The consuming system:
+* Defines what each state means for each operation type
+* Implements enforcement (approval, delay, refusal, escalation)
+* Logs decisions and state transitions
+* Handles graceful degradation when attestations unavailable
+
+### 6A.3 Domain-Specific Considerations
+
+**DURESS Handling**
+
+Bitcoin uses decoy wallets. Other domains require different safe actions:
+* Banking: Route to fraud prevention team
+* Healthcare: Require in-person verification
+* Enterprise: Trigger silent alarm, require second approver
+* Industrial: Initiate supervised mode, notify safety officer
+
+**STRESSED Handling**
+
+Adjust constraints based on domain risk:
+* Financial: Reduce transaction limits, require delay
+* Medical: Require peer review for critical decisions
+* Industrial: Enable additional safety interlocks
+* Enterprise: Require break-glass approval for destructive operations
+
+**IMPAIRED Handling**
+
+May require stronger constraints than financial systems:
+* Medical: Absolute denial for critical procedures
+* Industrial: Lock out safety-critical controls
+* Legal: Postpone irrevocable signing
+* Enterprise: Suspend privileged access pending review
+
+**Training Baselines**
+
+Calibration periods may vary by domain:
+* Financial: 7-14 days (standard)
+* Healthcare: 30 days (higher reliability required)
+* Industrial: Shift-specific baselines (different operational contexts)
+* Enterprise: Role-specific baselines (admin vs developer)
+
+**Freshness Windows**
+
+Adjust based on operation latency requirements:
+* Banking: 60-300 seconds (human-paced)
+* Healthcare: 300-600 seconds (longer deliberation)
+* Industrial: 10-30 seconds (rapid response)
+* Enterprise: 120-600 seconds (varies by operation)
+
+### 6A.4 Reference Integration Points
+
+**Section 10.1 (Generalised Security Gating)** provides normative requirements for non-Bitcoin implementations.
+
+**Annex I (Generic Operator State Gating Interface)** provides reference pseudocode applicable to any domain.
+
+**Annex J (Quick Start Guide)** applies to all domains, not just Bitcoin.
+
+### 6A.5 Important Boundaries
+
+Neural Lock does NOT define:
+* Domain-specific authorization logic
+* What operations are "high-risk" in your domain
+* How to respond to DURESS in your context
+* Enforcement mechanisms or refusal semantics
+* Logging or audit requirements
+
+Neural Lock provides operator state evidence. Your policy engine defines what to do with it.
+
+### 6A.6 Implementation Checklist for Non-Bitcoin Domains
+
+- [ ] Classify operations as Authoritative vs Non-Authoritative
+- [ ] Define NeuralState → Policy mappings for each operation class
+- [ ] Implement intent_hash computation for Authoritative operations
+- [ ] Define session boundaries and session_id generation
+- [ ] Integrate operator_state_ok into authorization logic
+- [ ] Define graceful degradation behavior for UNAVAILABLE
+- [ ] Implement domain-appropriate "safe actions" for DURESS
+- [ ] Establish training baseline requirements
+- [ ] Set freshness windows appropriate to operation latency
+- [ ] Configure confidence thresholds per operation class
+- [ ] Test with simulated stress and sensor failure scenarios
+- [ ] Document security trade-offs and policy decisions
 
 ---
 
@@ -730,10 +1180,10 @@ Detection time is deployment-dependent and MUST be documented.
 | Threat                        | Why Not Mitigated           | Recommended Defence                             |
 | ----------------------------- | --------------------------- | ----------------------------------------------- |
 | Long-term coercion            | patience and captivity      | supervised mode, guardian monitoring            |
-| Full device compromise        | classifier runs on device   | PQVL plus secure boot plus isolation            |
+| Full device compromise        | classifier runs on device   | PQSEC runtime attestation plus secure boot plus isolation |
 | Correlated guardian coercion  | guardians coerced together  | quorum diversity, independent guardians, delays |
 | Key extraction                | not a key-protection system | hardware isolation plus PQHD quorum             |
-| Post-broadcast quantum attack | Bitcoin limitation          | PQEH plus ZET plus ZEB discipline              |
+| Post-broadcast quantum attack | Bitcoin limitation          | SEAL plus ZET plus ZEB discipline              |
 
 ### 9.3 Honest Limitations
 
@@ -751,7 +1201,7 @@ This section is guidance only and does not modify quorum enforcement semantics, 
 
 ---
 
-## 10. Integration with PQSF Ecosystem
+## 10. Integration with PQ Ecosystem
 
 Neural Lock contributes exactly one predicate:
 
@@ -765,7 +1215,7 @@ operator_state_ok evaluation:
 * NOT_OK: NeuralAttestation is present but fails one or more required validation steps
 * UNAVAILABLE: no NeuralAttestation is present because classifier outcome is UNAVAILABLE
 
-Consuming enforcement systems MUST treat NOT_OK as predicate failure. UNAVAILABLE MUST be handled via Section 11.8 (Graceful Degradation).
+**PQSEC predicate mapping:** When consumed by PQSEC's ternary predicate model (§8A.1), Neural Lock results map as follows: OK → TRUE, NOT_OK → FALSE, UNAVAILABLE → UNAVAILABLE. This mapping is normative. Consuming enforcement systems MUST treat NOT_OK (FALSE) as predicate failure. UNAVAILABLE MUST be handled via Section 11.8 (Graceful Degradation) and PQSEC §8A tolerance rules.
 
 Validation requirements for OK:
 
@@ -787,12 +1237,12 @@ When used outside Bitcoin custody, consuming systems MUST:
 
 1. define the operation class (Authoritative or Non-Authoritative)
 2. define operator state requirements (required_state, minimum confidence)
-3. bind the operation attempt deterministically to the NeuralAttestation via intent_hash (or operation_hash), and session binding where applicable
+3. verify session_id and intent_hash bindings when present in NeuralAttestation; consuming systems MUST reject attestations with binding mismatches
 4. treat missing, stale, invalid, or unsupported NeuralAttestation as NOT_OK or UNAVAILABLE, and handle UNAVAILABLE via compensating controls or refusal
 
 ---
 
-## 11. Implementation Guidance
+## 11. Implementation Requirements and Guidance
 
 ### 11.1 Hardware Requirements (Guidance)
 
@@ -817,6 +1267,7 @@ Training Mode MUST include:
 3. optional supervised stress-profile calibration
 4. slow-moving adaptation if enabled
 5. no adaptation during any DURESS history window
+6. Deployments MUST document their baseline calibration methodology and threshold selection rationale as part of their conformance statement.
 
 ### 11.3 Accessibility and Physiological Diversity
 
@@ -839,7 +1290,7 @@ Baseline reset MUST require guardian quorum and/or enforced delay, and MUST be a
 
 ### 11.5 Conformance Testing (Required)
 
-Implementations claiming conformance MUST pass Annex E test vectors.
+Implementations claiming conformance MUST pass Annex E test scenarios.
 
 ### 11.6 Break Glass Emergency Override (Optional)
 
@@ -860,13 +1311,61 @@ When Neural Lock cannot produce a valid NeuralAttestation due to sensor failure,
 3. Implementations MUST NOT silently downgrade security.
 4. Any degradation state MUST be recorded as an audit event.
 
+**PQSEC Integration:** When NeuralAttestation cannot be produced, `operator_state_ok` evaluates to UNAVAILABLE per PQSEC §8A ternary predicate model. PQSEC applies fail-closed mapping: Authoritative operations MUST deny; NonAuthoritative operations MUST deny unless explicit policy permits continuation with compensating controls per PQSEC §8A.5.
+
 Recommended baseline survivability policy (informative):
 
 * under UNAVAILABLE, allow only constrained, non-catastrophic operations (for example decoy access, strict caps, enforced delays, and guardian notification), and require guardians for high-value actions.
 
+### 11.9 ReceiptEnvelope Alignment (Normative)
+
+NeuralAttestation MAY be transported as ReceiptEnvelope type `neural_lock.operator_attestation` using the `neural_lock.*` namespace registered in PQSF Annex W §W.6.
+
+Implementations MUST accept NeuralAttestation in ReceiptEnvelope format when present. Implementations MAY accept raw canonical CBOR NeuralAttestation when policy permits, to support minimal deployments without full ReceiptEnvelope infrastructure.
+
+When transported as ReceiptEnvelope, the NeuralAttestation MUST be the `body` field. All ReceiptEnvelope rules (canonical encoding, signature, authority boundary) apply per PQSF Annex W.
+
+ReceiptEnvelope transport does not alter Neural Lock's authority boundary: `neural_lock.operator_attestation` is evidence only and MUST NOT grant authority.
+
+### 11.10 Training Mode Security Boundary (Normative)
+
+Training mode defines the baseline used for operator state classification and is security-critical.
+
+**Rules:**
+
+1. Training mode MUST be explicitly activated and MUST require the same authorisation level as a policy change.
+2. Training mode MUST NOT be entered during, or immediately following, an Authoritative operation failure, lockout, or duress classification.
+3. Baseline establishment SHOULD span multiple sessions across distinct time periods (policy-default: ≥ 3 sessions over ≥ 72 hours).
+4. Transition from training mode to production mode MUST be treated as an Authoritative operation by the consuming enforcement system and MUST be recorded as a custody-relevant event.
+5. Baseline reset or retraining MUST follow the same controls as initial training.
+
+**Retraining frequency control:**
+
+6. Baseline reset and retraining frequency MUST be policy-governed.
+7. Deployments SHOULD enforce a minimum interval between retraining events (policy-default: ≥ 30 days).
+8. Retraining attempts within the minimum interval MUST be refused unless an explicit policy exception is satisfied (for example, device replacement, verified baseline corruption, or governance-approved reset).
+9. Retraining events MUST be recorded as custody-relevant events.
+
+Training artefacts grant no authority and MUST NOT relax enforcement semantics.
+
+### 11.11 Operator Variability and Accommodation (Normative)
+
+Neural Lock baseline training is designed to accommodate operator-specific physiological and behavioural variation.
+
+Implementations MUST account for baseline variability arising from disability, neurodivergence, chronic health conditions, medication, or known high-variance states.
+
+**Rules:**
+
+1. Training mode MUST capture the operator's typical range of states, including known high-variation periods.
+2. Implementations SHOULD support configurable sensitivity thresholds per state transition.
+3. Deployments SHOULD NOT enable Neural Lock enforcement without a completed baseline training period representative of the operator's normal conditions.
+4. Operators MUST be informed of Neural Lock's role and MUST retain the ability to adjust or disable it via policy.
+
+This is a safety and availability requirement, not a relaxation of enforcement.
+
 ---
 
-## 12. Comparison to Existing Solutions
+## 12. Comparison to Existing Solutions (Informative)
 
 Duress PINs, timelocks, and multisig each fail under common coercion patterns or operational realities. Neural Lock supplies a covert operator-state predicate and keeps enforcement external, preserving Bitcoin’s trust model.
 
@@ -894,11 +1393,9 @@ Other future work:
 * PQSF
 * PQSEC
 * PQHD
-* PQVL
 * Epoch Clock
 * ZET
 * ZEB
-* PQEH
 * PQAI
 * Bitcoin BIPs: 32, 174, 341, 370
 
@@ -927,7 +1424,7 @@ function classify(signals, baseline, policy, current_tick):
         return { outcome: "UNAVAILABLE", reason: "insufficient_signals" }
 
     if detect_spoofing(fresh, policy, current_tick):
-        return { outcome: "AVAILABLE", state: DURESS, conf_value: 0, conf_scale: CONF_SCALE, reason: "spoofing_detected" }
+        return { outcome: "AVAILABLE", state: DURESS, conf_value: 1, conf_scale: CONF_SCALE, reason: "spoofing_detected" }
 
     deviation = 0
 
@@ -958,7 +1455,7 @@ function classify(signals, baseline, policy, current_tick):
 
 Reason codes are local-only and MUST NOT be included in NeuralAttestation.
 
-## Annex B Spoofing and Liveness Detection Pseudocode
+## Annex B Spoofing and Liveness Detection Pseudocode (Reference)
 
 ```pseudocode
 function detect_spoofing(signals, policy, current_tick):
@@ -975,10 +1472,10 @@ function detect_spoofing(signals, policy, current_tick):
     return false
 ```
 
-## Annex C NeuralAttestation Construction and Signing
+## Annex C NeuralAttestation Construction and Signing (Reference)
 
 ```pseudocode
-function build_attestation(classifier_result, policy, device, current_tick):
+function build_attestation(classifier_result, policy, device, current_tick, session_id_opt, intent_hash_opt, classifier_build_hash):
     if classifier_result.outcome != "AVAILABLE":
         return null
 
@@ -991,6 +1488,14 @@ function build_attestation(classifier_result, policy, device, current_tick):
         freshness_window_ticks: policy.freshness_window_ticks,
         device_id: device.device_id,
         signal_sources: classifier_result.signal_sources,
+
+        # Binding fields (optional but normative when used)
+        session_id: session_id_opt,
+        intent_hash: intent_hash_opt,
+
+        # Evidence producer integrity binding (required)
+        classifier_build_hash: classifier_build_hash,
+
         suite_profile: policy.suite_profile
     }
 
@@ -1000,7 +1505,7 @@ function build_attestation(classifier_result, policy, device, current_tick):
     return att
 ```
 
-## Annex D PSBT Integration and Proprietary Field Versioning
+## Annex D PSBT Integration and Proprietary Field Versioning (Reference)
 
 ```pseudocode
 // Key: 0xFC | "neural_lock" | 0x01
@@ -1010,9 +1515,21 @@ function attach_neural_lock_to_psbt(psbt, attestation):
     return psbt
 ```
 
-## Annex E Conformance Test Vectors (Normative)
+If the attestation is wrapped in ReceiptEnvelope before embedding, the ReceiptEnvelope.type MUST be `neural_lock.operator_attestation` and the ReceiptEnvelope.body MUST be the NeuralAttestation object.
 
-This annex defines test vectors as structured cases. Implementations MAY add additional vectors but MUST include these and MUST produce the expected outcomes.
+**Field Content Requirement:**
+
+PSBT proprietary field value MUST be the canonical CBOR bytes of NeuralAttestation as defined in Section 5.1, encoded according to PQSF canonical encoding rules (Section 3.4).
+
+When consuming NeuralAttestation from PSBT:
+1. Extract proprietary field value
+2. Decode as canonical CBOR
+3. Verify canonical encoding (re-encoding produces byte-identical output)
+4. Validate NeuralAttestation per Section 10 requirements
+
+## Annex E Conformance Test Scenarios (Normative)
+
+This annex defines required test scenarios. Implementations claiming conformance MUST handle these cases correctly and MUST produce the specified outcomes. Future versions of this specification MAY provide concrete test vectors with canonical CBOR bytes.
 
 E.1 Valid NORMAL Attestation
 
@@ -1040,7 +1557,7 @@ E.6 Invalid Low Confidence
 
 E.7 Spoofing Zero Variance
 
-* Expected: classifier outcome AVAILABLE with state DURESS and conf_value = 0
+* Expected: classifier outcome AVAILABLE with state DURESS and conf_value = 1
 
 E.8 Sensor Loss Insufficient Signals
 
@@ -1050,7 +1567,7 @@ E.9 Privacy Test No Raw Signal Leakage
 
 * Expected: no raw signals stored, transmitted, or logged
 
-## Annex F Decoy Wallet Derivation and Constraints
+## Annex F Decoy Wallet Derivation and Constraints (Reference)
 
 ```pseudocode
 primary_path = m / purpose' / coin' / account' / 0' / index
@@ -1069,16 +1586,21 @@ Break Glass is a policy-governed override requiring guardian quorum and enforced
 
 ## Annex I Generic Operator State Gating Interface (Informative)
 
+### I.1 Core Interface
+
 ```pseudocode
 OperationIntent = {
   operation_type: string,
   operation_class: "Authoritative" | "NonAuthoritative",
-  intent_hash: bytes,
-  session_id: string | null,
+  intent_hash: bytes32,
+  session_id: bytes32 | null,
   exporter_hash: bytes | null,
   issued_tick: uint64,
   expiry_tick: uint64
 }
+```
+
+`bytes32` denotes a fixed 32-byte value. When present, session_id and intent_hash MUST match the 32-byte fields in NeuralAttestation (§5.1).
 
 OperatorStateRequirement = {
   required_state: "NORMAL" | "STRESSED" | "DURESS" | "IMPAIRED",
@@ -1104,8 +1626,186 @@ function gate_operation(intent, requirement, attestation, current_tick):
 
     if not confidence_satisfies(attestation, requirement):
         return "NOT_OK"
+    
+    # Verify binding fields if present
+    if attestation.session_id is not null:
+        if intent.session_id != attestation.session_id:
+            return "NOT_OK"
+    
+    if attestation.intent_hash is not null:
+        if intent.intent_hash != attestation.intent_hash:
+            return "NOT_OK"
 
     return "OK"
+```
+
+### I.2 Domain-Specific Integration Examples
+
+#### I.2.1 Bitcoin Custody (Primary Use Case)
+
+```pseudocode
+operation_types = {
+  "btc_spend": "Authoritative",
+  "btc_sign": "Authoritative", 
+  "address_generation": "NonAuthoritative"
+}
+
+policy_rules = {
+  "btc_spend": {
+    NORMAL: { action: "allow", constraints: none },
+    STRESSED: { action: "allow", constraints: [delay_30s, cap_0.1_btc] },
+    DURESS: { action: "route_to_decoy", constraints: [cap_0.01_btc] },
+    IMPAIRED: { action: "deny", reason: "cognitive_impairment" },
+    UNAVAILABLE: { action: "require", compensating: [guardian_approval] }
+  }
+}
+```
+
+#### I.2.2 Banking Wire Transfer
+
+```pseudocode
+operation_types = {
+  "wire_transfer": "Authoritative",
+  "account_inquiry": "NonAuthoritative"
+}
+
+policy_rules = {
+  "wire_transfer": {
+    NORMAL: { action: "allow", constraints: none },
+    STRESSED: { action: "allow", constraints: [delay_120s, notify_fraud_team] },
+    DURESS: { action: "route_to_fraud_prevention", silent_alert: true },
+    IMPAIRED: { action: "deny", reason: "operator_state" },
+    UNAVAILABLE: { action: "require", compensating: [in_person_verification] }
+  }
+}
+```
+
+#### I.2.3 Healthcare Prescription Authorization
+
+```pseudocode
+operation_types = {
+  "controlled_substance_rx": "Authoritative",
+  "patient_lookup": "NonAuthoritative"
+}
+
+policy_rules = {
+  "controlled_substance_rx": {
+    NORMAL: { action: "allow", constraints: [peer_notification] },
+    STRESSED: { action: "allow", constraints: [supervisor_review_required] },
+    DURESS: { action: "require", compensating: [in_person_verification, witness] },
+    IMPAIRED: { action: "deny", reason: "cognitive_impairment_detected" },
+    UNAVAILABLE: { action: "deny", reason: "attestation_required" }
+  }
+}
+```
+
+#### I.2.4 Enterprise Root Access
+
+```pseudocode
+operation_types = {
+  "root_access": "Authoritative",
+  "data_deletion": "Authoritative",
+  "log_view": "NonAuthoritative"
+}
+
+policy_rules = {
+  "data_deletion": {
+    NORMAL: { action: "allow", constraints: [confirmation_required, logged] },
+    STRESSED: { action: "allow", constraints: [second_admin_approval, delay_300s] },
+    DURESS: { action: "trigger_silent_alarm", route: "security_team" },
+    IMPAIRED: { action: "deny", reason: "operator_state", escalate: true },
+    UNAVAILABLE: { action: "require", compensating: [break_glass_approval] }
+  }
+}
+```
+
+#### I.2.5 Industrial Safety Override
+
+```pseudocode
+operation_types = {
+  "safety_system_override": "Authoritative",
+  "parameter_view": "NonAuthoritative"
+}
+
+policy_rules = {
+  "safety_system_override": {
+    NORMAL: { action: "allow", constraints: [supervisor_present, logged] },
+    STRESSED: { action: "allow", constraints: [safety_officer_approval, witnessed] },
+    DURESS: { action: "deny", alert: [safety_team, management] },
+    IMPAIRED: { action: "deny", lock: [privileged_controls] },
+    UNAVAILABLE: { action: "require", compensating: [manual_key_authorization] }
+  }
+}
+```
+
+### I.3 Binding Field Examples
+
+#### I.3.1 Session Binding
+
+```pseudocode
+# At authentication
+session = create_session(user_credentials)
+session_id = hash(session.auth_token || session.timestamp)
+
+# When operation attempted
+attestation = neural_lock.get_attestation()
+attestation.session_id = session_id
+operation.session_id = session_id
+
+# Verification catches replay across sessions
+if attestation.session_id != operation.session_id:
+    deny("session_mismatch")
+```
+
+#### I.3.2 Intent Binding
+
+```pseudocode
+# Bitcoin spend
+intent = {
+  recipients: [(address_1, amount_1), (address_2, amount_2)],
+  fee_rate: 10_sats_per_vbyte,
+  change_address: address_3
+}
+intent_hash = canonical_hash(intent)
+
+# Wire transfer
+intent = {
+  recipient_account: "123456789",
+  amount: 50000_usd,
+  currency: "USD",
+  routing: "021000021"
+}
+intent_hash = canonical_hash(intent)
+
+# Enterprise data deletion
+intent = {
+  resource_path: "/data/customer/records/2024",
+  deletion_type: "permanent",
+  reason: "retention_policy_expiry"
+}
+intent_hash = canonical_hash(intent)
+```
+
+### I.4 Graceful Degradation Examples
+
+```pseudocode
+function handle_unavailable(operation, policy):
+    if operation.class == "NonAuthoritative":
+        # Allow non-critical operations with warning
+        warn_user("neural_lock_unavailable")
+        return "ALLOW_WITH_WARNING"
+    
+    if operation.value < policy.low_value_threshold:
+        # Allow low-value operations with enhanced logging
+        log_audit("neural_lock_unavailable_low_value", operation)
+        return "ALLOW_WITH_AUDIT"
+    
+    if policy.has_compensating_predicates:
+        # Require additional authorization
+        return "REQUIRE_GUARDIAN_APPROVAL"
+    
+    # High-value without compensating controls
+    return "DENY"
 ```
 
 ## Annex J Quick Start Guide (Informative)
@@ -1137,6 +1837,60 @@ function gate_operation(intent, requirement, attestation, current_tick):
 
 ---
 
+## Changelog
+
+
+### Version 1.1.0
+
+**UNAVAILABLE Semantics Formalised**
+
+* Introduced explicit `ClassifierOutcome` model.
+* Defined strict rules for UNAVAILABLE attestation handling.
+* Added normative Graceful Degradation integration with PQSEC ternary predicate model.
+
+**Manual Duress Signal Added (4.12)**
+
+* Optional, non-authoritative manual duress path.
+* One-way DURESS transition semantics.
+* Anti-coercion safety requirements and rotation rules.
+
+**Evidence Producer Integrity Binding**
+
+* Added `classifier_build_hash` requirement.
+* Manifest option for multi-component classifiers.
+* Explicit binding to CryptoSuiteProfile hash domain.
+
+**Emission Discipline Strengthened**
+
+* Operation-scoped attestation production only.
+* Rate limiting requirements.
+* External non-distinguishability requirements.
+* ReceiptEnvelope transport alignment.
+
+**Session & Intent Binding**
+
+* Added optional `session_id` and `intent_hash` binding fields.
+* Normative PQSEC binding validation requirements.
+
+**Deployment Generalisation**
+
+* Added 6A domain-agnostic integration section.
+* Added Annex I generic gating interface examples.
+
+**Training Mode Security Hardening**
+
+* Added retraining frequency governance.
+* Added baseline reset controls.
+* Added operator variability accommodation rules.
+
+**Conformance Surface Expanded**
+
+* Expanded Annex E scenarios.
+* Added Compliance Checklist (Annex K).
+* Added liveness and power-management requirements.
+
+---
+
 ## 16. Acknowledgements (Informative)
 
 This specification acknowledges the foundational contributions of:
@@ -1151,8 +1905,9 @@ Paul Kocher, Joshua Jaffe, and Benjamin Jun, for foundational work on timing and
 
 These contributions provide the threat models and primitives that Neural Lock composes into a non-authoritative human-state predicate.
 
-If you find this work useful and want to support it:
+---
 
+If you find this work useful and wish to support continued development, donations are welcome:
+
+**Bitcoin:**
 bc1q380874ggwuavgldrsyqzzn9zmvvldkrs8aygkw
-
-End of Specification
